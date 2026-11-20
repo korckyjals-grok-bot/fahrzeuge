@@ -1,4 +1,4 @@
-/* In der Stadt 1 – Fahrzeuge — contenido. v1.1.0
+/* In der Stadt 1 – Fahrzeuge — contenido. v1.1.1
    Fuente: hoja de vocabulario «Thema: In der Stadt 1_Fahrzeuge» (Worksheet Crafter).
    En la hoja el artículo se marca con la mano de color: azul = der, rosado/rojo = die, verde = das.
    Plurales como en la hoja, en forma estándar (ver Transcripcion_Hoja_Fahrzeuge_202611121133.md). */
@@ -76,5 +76,5 @@
   };
   function find(n) { for (var i = 0; i < NOUNS.length; i++) if (NOUNS[i].n === n) return NOUNS[i]; return null; }
   function verb(inf) { for (var i = 0; i < VERBS.length; i++) if (VERBS[i].inf === inf) return VERBS[i]; return null; }
-  g.FZ_DATA = { VERSION: '1.1.0', NOUNS: NOUNS, VERBS: VERBS, ADJ: ADJ, PHRASES: PHRASES, CARDS: CARDS, CONFUSE: CONFUSE, find: find, verb: verb };
+  g.FZ_DATA = { VERSION: '1.1.1', NOUNS: NOUNS, VERBS: VERBS, ADJ: ADJ, PHRASES: PHRASES, CARDS: CARDS, CONFUSE: CONFUSE, find: find, verb: verb };
 })(typeof window !== 'undefined' ? window : globalThis);
