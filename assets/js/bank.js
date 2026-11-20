@@ -28,7 +28,8 @@
   D.NOUNS.filter(function (p) { return p.plq; }).forEach(function (p, k) {
     add({ id: 'pl-' + k, kind: 'mc', type: 'plural', topic: 'art', grp: p.n, wk: ['n:' + p.n], fast: true, pic: p.i,
       q: '¿Cuál es el plural?', de: p.n + ' → die ___', o: [p.pl].concat(p.bad), a: p.pl, say: art(p) + ', die ' + p.pl,
-      help: p.n + ' = ' + p.es + '. En la hoja el plural está después de la coma (¨ = la vocal lleva diéresis).',
+      /* v1.1.2 (N9): la Ayuda ya no nombra el sustantivo (en Roller y Krankenwagen el plural es igual: nombrarlo daba la respuesta) */
+      help: 'Es ' + p.es + '. En la hoja el plural está después de la coma (¨ = la vocal lleva diéresis).',
       e: '<b>' + art(p) + ' → die ' + p.pl + '</b>.' + (p.note ? ' ' + p.note : '') });
   });
 
@@ -36,11 +37,11 @@
   D.NOUNS.forEach(function (p, k) {
     var others = D.NOUNS.filter(function (x) { return x !== p && !confusable(x.n, p.n); });
     var d = pickN(others, 3);
-    add({ id: 'wde-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: p.n, wk: ['n:' + p.n], fast: true, pic: p.i,
+    add({ id: 'wde-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: p.n, wk: ['n:' + p.n], fast: true, pic: p.i, noun: p.n, em: p.i,
       q: '¿Cómo se dice «' + p.es + '» en alemán?', o: [art(p)].concat(d.map(art)), a: art(p), say: art(p),
       help: 'Mira el dibujo y piensa en la hoja de vocabulario.', e: '<b>' + art(p) + '</b> = ' + p.es + '.' });
     var d2 = pickN(others, 3);
-    add({ id: 'wes-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: p.n, wk: ['n:' + p.n], fast: true, stack: true,
+    add({ id: 'wes-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: p.n, wk: ['n:' + p.n], fast: true, stack: true, noun: p.n, em: p.i,
       q: '¿Qué significa «' + art(p) + '»?', o: [p.es].concat(d2.map(function (x) { return x.es; })), a: p.es, say: art(p),
       help: 'Lee la palabra en voz alta. ¿Dónde la viste en la hoja?', e: '<b>' + art(p) + '</b> = ' + p.es + ' ' + p.i });
   });
@@ -164,6 +165,7 @@
   ];
   SATZ.forEach(function (r, k) {
     add({ id: 'satz-' + k, kind: 'mc', type: 'satz', topic: 'satz', grp: 'satz-' + k, fast: true,
+      vf: D.VERBS.some(function (v) { return [v.er, v.ich, v.du, v.wir].some(function (f) { return f.split(' ')[0] === r[1]; }); }), /* v1.1.2: el hueco es una forma del verbo */
       q: r[4] || 'Completa la frase:', de: r[0], o: [r[1]].concat(r[2]), a: r[1], say: fill(r[0], r[1]),
       help: 'En español: ' + r[3], e: '<b>' + fill(r[0], r[1]) + '</b> = ' + r[3] });
   });

@@ -1,4 +1,4 @@
-/* In der Stadt 1 – Fahrzeuge — lógica pura (sin DOM): puntaje, marca verde, selección sin repetir, cola del Desafío sin tiempo. v1.1.1 (base: Mein Tag in der Stadt 1.0.1) */
+/* In der Stadt 1 – Fahrzeuge — lógica pura (sin DOM): puntaje, marca verde, selección sin repetir, cola del Desafío sin tiempo. v1.1.2 (base: Mein Tag in der Stadt 1.0.1) */
 (function (g) {
   'use strict';
   var CK = 'aleman_check_fahrzeuge', BK = 'fahrzeuge_best', TOPICS = ['art', 'wort', 'verb', 'adj', 'satz'];
@@ -60,11 +60,12 @@
   }
 
   /* ---------- v1.1.0: Desafío sin tiempo ---------- */
-  /* Mejor marca sin tiempo: solo enteros de 0 a max (vacío, «abc», «1e1», «999», «-3», «5.5» → 0) */
+  /* Mejor marca sin tiempo: solo enteros de 0 a max escritos tal cual (vacío, «abc», «1e1», «999», «-3», «5.5» → 0;
+     v1.1.2 (N5): también « 7 » y «07» → 0, porque la app solo guarda String(entero)) */
   function clampUntimedBest(v, max) {
     max = max == null ? UNTIMED_N : max;
-    var s = v == null ? '' : String(v).trim();
-    if (!/^\d+$/.test(s)) return 0;
+    var s = v == null ? '' : String(v);
+    if (!/^(0|[1-9]\d*)$/.test(s)) return 0;
     var n = Number(s);
     return Number.isInteger(n) && n >= 0 && n <= max ? n : 0;
   }
@@ -118,26 +119,54 @@
      - palabras ES↔DE: la palabra alemana y su traducción juntas en lo que se ve (p. ej. «Der Bus …» + «el bus …»);
      - am …sten: «sustantivo ist am …sten».
      Más estricta que «una sola combinación»: basta con que aparezca la correcta, aunque también aparezca otra. */
-  var MEMO = { segs: {}, seen: {} };
+  var MEMO = { segs: {}, seen: {}, raw: {} };
   function segs(it) {
     if (MEMO.segs[it.id]) return MEMO.segs[it.id];
     var out = MEMO.segs[it.id] = [];
-    [it.q, it.de, it.de ? it.de.replace('___', Array.isArray(it.a) ? it.a.join(' ') : it.a) : '', Array.isArray(it.a) ? it.a.join(' ') : it.a, it.say, it.e].concat(it.o || [])
+    [it.q, it.de, it.de ? it.de.replace('___', Array.isArray(it.a) ? it.a.join(' ') : it.a) : '', Array.isArray(it.a) ? it.a.join(' ') : it.a, it.say, it.e, it.help /* v1.1.2: la Ayuda también se ve */].concat(it.o || [])
       .forEach(function (t) { String(t || '').replace(/<[^>]+>/g, ' ').split(/[.?!=—→·;:()|«»,–]+/).forEach(function (x) { x = norm(x); if (x.trim()) out.push(x); }); });
     return out;
   }
   function has(S, g) { g = ' ' + norm(g).trim() + ' '; for (var i = 0; i < S.length; i++) if (S[i].indexOf(g) >= 0) return true; return false; }
   function hasAll(S, g) { var t = ' ' + S.join(' | ') + ' '; return t.indexOf(' ' + norm(g).trim() + ' ') >= 0; }
+  /* v1.1.2 (B1 y B2 del tester sobre v1.1.1 + auditoría general de pares):
+     - Formas (Completa la fila): la forma correcta en cualquier texto visible (p. ej. la opción «kleiner» de un Compara).
+     - Verbos (conjugación y frases con verbo): «pronombre + forma» (ich fahre, du fährst, wir fahren) en lo visible;
+       con er/sie/es (persona o cosa), la forma de 3.ª persona en la consigna, la frase completa, lo que se oye o la explicación
+       (p. ej. «Der Bus fährt um 8 Uhr ab» o «er/sie/es fährt» revela «Papa ___ mit dem Auto»). */
+  var PRON = { ich: 1, du: 1, wir: 1, ihr: 1 };
+  function verbKey(b) {
+    if (!b.de || typeof b.a !== 'string' || b.a.indexOf(' ') >= 0) return null;
+    if (b.type !== 'verb' && !(b.type === 'satz' && b.vf)) return null;
+    var l = norm(b.de.split('___')[0]).trim().split(' ').filter(Boolean), w = l[l.length - 1];
+    return PRON[w] ? { seg: [w + ' ' + b.a] } : { seen: [b.a] };
+  }
   function revealKeys(b) {
     if (b.kind !== 'mc') return null;
     if (b.type === 'art') return { seg: [b.a + ' ' + b.de.replace('___', '').trim()] };
-    if (b.type === 'plural') return { seg: [b.a] };
+    if (b.type === 'plural' || b.type === 'adjf') return { seg: [b.a] };
     if (b.type === 'sup') return { seg: [String(b.a).split(' ').slice(-1)[0] + ' ist ' + b.q.replace(/^Was ist /, '').replace('?', '')] };
     if (b.type === 'wort') { var key = (b.q.match(/«([^»]+)»/) || [])[1]; return key ? { both: [b.a, key] } : null; }
-    return null;
+    return verbKey(b);
+  }
+  /* v1.1.2: lo que se ve con mayúsculas (para reconocer el sustantivo alemán, no «al bus» en español) */
+  function rawText(it) { if (MEMO.raw[it.id]) return MEMO.raw[it.id]; return MEMO.raw[it.id] = ' ' + [it.q, it.de ? it.de.replace('___', Array.isArray(it.a) ? it.a.join(' ') : it.a) : '', it.say, it.e].concat(it.o || []).join(' . ').replace(/<[^>]+>/g, ' ').replace(/[^\p{L}\p{N}]+/gu, ' ') + ' '; }
+  /* v1.1.2 (B2): el dibujo junto al sustantivo alemán revela «¿Cómo se dice…?» y «¿Qué significa…?» de ese sustantivo
+     (🏍️ + «…als das Motorrad» → «la moto = das Motorrad»). em = dibujo del sustantivo (wde: pic; wes: em). */
+  function picNoun(a, b) {
+    if (b.type !== 'wort' || !a.pic || !b.noun || !b.em) return false;
+    return a.pic.indexOf(b.em) >= 0 && rawText(a).indexOf(' ' + b.noun + ' ') >= 0;
+  }
+  /* v1.1.2: el significado del adjetivo (aes «¿Qué significa schnell?») se deduce de un Compara con dibujos o de un
+     «am …sten» ya resuelto con esa misma palabra (✈️ 🚲 «Das Flugzeug ist schneller als das Fahrrad» → schnell = rápido). */
+  function adjMeaning(a, b) {
+    if (!b.wk || (a.type !== 'adjv' && a.type !== 'sup')) return false;
+    return (a.wk || []).some(function (k) { return k.indexOf('j:') === 0 && b.wk.indexOf('js:' + k.slice(2)) >= 0; });
   }
   function revealsB(a, b) {
+    if (picNoun(a, b) || adjMeaning(a, b)) return true;
     var k = revealKeys(b); if (!k) return false;
+    if (k.seen) return k.seen.some(function (g) { return seenText(a).indexOf(' ' + norm(g).trim() + ' ') >= 0; });
     var S = segs(a);
     if (k.seg) return k.seg.some(function (g) { return has(S, g); });
     return k.both.every(function (g) { return hasAll(S, g); });
@@ -149,7 +178,7 @@
     return shows(a, b) || shows(b, a) || revealsB(a, b) || revealsB(b, a);
   }
   function clashMap(items) {
-    MEMO = { segs: {}, seen: {} }; /* textos de cada pregunta, una sola vez (rápido también en un teléfono) */
+    MEMO = { segs: {}, seen: {}, raw: {} }; /* textos de cada pregunta, una sola vez (rápido también en un teléfono) */
     var m = {}; items.forEach(function (x) { m[x.id] = {}; });
     for (var i = 0; i < items.length; i++) for (var j = i + 1; j < items.length; j++) if (clash(items[i], items[j])) { m[items[i].id][items[j].id] = 1; m[items[j].id][items[i].id] = 1; }
     return m;
@@ -157,8 +186,9 @@
   /* v1.1.1: pesos por pregunta (solo el Desafío sin tiempo). Una pregunta que choca con muchas (p. ej. «el bus → der Bus»:
      «der Bus» sale en muchas frases) quedaría fuera más seguido que en el 60 s; su peso la compensa para que cada pregunta salga
      casi tan seguido como en el 60 s y la mezcla de respuestas (der/die/das, ein/aus/an…) sea la misma. Pesos calculados con
-     tests/calibrate_weights.mjs (se repite la ronda muchas veces y se ajusta). Una pregunta sin peso cuenta como 1. */
-  var UW = {"art-0":1.12,"art-1":0.892,"art-2":0.9,"art-3":1.032,"art-4":1.049,"art-5":1.043,"art-6":1.247,"art-7":0.877,"art-8":0.89,"art-9":0.897,"art-10":0.906,"art-11":0.9,"art-12":1.091,"art-13":1.281,"art-14":0.892,"art-15":1.455,"art-16":0.919,"art-17":0.862,"art-18":0.9,"art-19":1.073,"art-20":1.057,"art-21":0.877,"pl-0":0.998,"pl-1":0.948,"pl-2":0.993,"pl-3":2.123,"pl-4":0.97,"pl-5":0.975,"pl-6":0.969,"pl-7":0.973,"pl-8":0.969,"pl-9":0.99,"pl-10":0.983,"pl-11":0.97,"pl-12":0.948,"pl-13":0.992,"pl-14":0.987,"pl-15":0.971,"pl-16":0.98,"pl-17":0.959,"pl-18":0.981,"pl-19":0.959,"pl-20":0.968,"wde-0":5.698,"wes-0":2.884,"wde-1":1.341,"wes-1":0.833,"wde-2":1.209,"wes-2":0.75,"wde-3":1.349,"wes-3":0.837,"wde-4":1.373,"wes-4":0.875,"wde-5":1.527,"wes-5":0.817,"wde-6":1.893,"wes-6":0.987,"wde-7":1.349,"wes-7":0.84,"wde-8":1.316,"wes-8":0.829,"wde-9":1.347,"wes-9":0.829,"wde-10":1.277,"wes-10":0.833,"wde-11":1.335,"wes-11":0.828,"wde-12":1.326,"wes-12":0.818,"wde-13":1.379,"wes-13":0.815,"wde-14":1.338,"wes-14":0.817,"wde-15":1.616,"wes-15":0.977,"wde-16":1.538,"wes-16":0.847,"wde-17":1.356,"wes-17":0.815,"wde-18":1.334,"wes-18":0.805,"wde-19":1.345,"wes-19":0.83,"wde-20":1.32,"wes-20":0.835,"wde-21":1.34,"wes-21":0.858,"vde-0":0.766,"ves-0":0.754,"vde-1":1.168,"ves-1":1.24,"vde-2":0.774,"ves-2":0.744,"vde-3":0.742,"ves-3":0.756,"vde-4":1.041,"ves-4":1.034,"vde-5":0.688,"ves-5":0.686,"vde-6":1.175,"ves-6":1.174,"vde-7":1.032,"ves-7":1.01,"aes-0":0.621,"aes-1":0.606,"aes-2":0.594,"aes-3":0.618,"conj-0":1.265,"conj-1":0.557,"conj-2":1.324,"conj-3":0.62,"conj-4":0.602,"conj-5":1.362,"conj-6":1.701,"conj-7":1.76,"conj-8":1.098,"conj-9":0.62,"conj-10":0.893,"conj-11":0.974,"conj-12":1.269,"conj-13":0.487,"conj-14":1.613,"conj-15":1.827,"teil-0":1.028,"teil-1":1.023,"teil-2":0.997,"teil-3":1.028,"teil-4":1.044,"teil-5":1.103,"adjf-0":1.013,"adjf-1":1.009,"adjf-2":0.99,"adjf-3":0.974,"adjf-4":1.023,"adjf-5":0.989,"adjf-6":1.006,"adjf-7":0.985,"cmp-0":1.082,"cmp-1":0.928,"cmp-2":1.068,"cmp-3":1.016,"cmp-4":0.942,"cmp-5":0.922,"cmp-6":1.101,"cmp-7":0.985,"cmp-8":1.046,"cmp-9":1.061,"cmp-10":1.074,"cmp-11":0.954,"sup-0":1.017,"sup-1":1.032,"sup-2":1.009,"sup-3":1.026,"satz-0":0.58,"satz-1":1.169,"satz-2":1.502,"satz-3":1.245,"satz-4":1.287,"satz-5":0.582,"satz-6":1.193,"satz-7":1.217};
+     tests/calibrate_weights.mjs (se repite la ronda muchas veces y se ajusta). Una pregunta sin peso cuenta como 1.
+     v1.1.2: recalculados con la regla ampliada (node calibrate_weights.mjs 20000 30 300 0.01; mejor iteración 28). */
+  var UW = {"art-0":1.117,"art-1":0.889,"art-2":0.86,"art-3":1.02,"art-4":1.058,"art-5":1.048,"art-6":1.295,"art-7":0.852,"art-8":0.875,"art-9":0.886,"art-10":0.873,"art-11":0.882,"art-12":1.154,"art-13":1.374,"art-14":0.89,"art-15":1.476,"art-16":0.959,"art-17":0.839,"art-18":0.848,"art-19":1.071,"art-20":1.069,"art-21":0.85,"pl-0":0.985,"pl-1":0.958,"pl-2":0.962,"pl-3":2.264,"pl-4":0.968,"pl-5":0.973,"pl-6":0.97,"pl-7":0.978,"pl-8":0.948,"pl-9":0.958,"pl-10":0.962,"pl-11":0.983,"pl-12":0.963,"pl-13":0.951,"pl-14":0.952,"pl-15":0.975,"pl-16":0.952,"pl-17":0.952,"pl-18":0.96,"pl-19":0.941,"pl-20":0.961,"wde-0":12.926,"wes-0":5.199,"wde-1":1.147,"wes-1":0.726,"wde-2":0.886,"wes-2":0.547,"wde-3":1.195,"wes-3":0.731,"wde-4":1.649,"wes-4":0.997,"wde-5":1.357,"wes-5":0.73,"wde-6":2.541,"wes-6":1.21,"wde-7":0.986,"wes-7":0.611,"wde-8":0.991,"wes-8":0.603,"wde-9":0.994,"wes-9":0.609,"wde-10":1.222,"wes-10":0.627,"wde-11":0.978,"wes-11":0.614,"wde-12":2.495,"wes-12":1.489,"wde-13":2.652,"wes-13":1.522,"wde-14":0.991,"wes-14":0.607,"wde-15":1.908,"wes-15":1.107,"wde-16":2.251,"wes-16":1.113,"wde-17":1.008,"wes-17":0.619,"wde-18":0.996,"wes-18":0.603,"wde-19":1.134,"wes-19":0.722,"wde-20":1.208,"wes-20":0.722,"wde-21":0.988,"wes-21":0.604,"vde-0":0.605,"ves-0":0.603,"vde-1":2.155,"ves-1":0.899,"vde-2":0.621,"ves-2":0.608,"vde-3":0.974,"ves-3":0.59,"vde-4":1.32,"ves-4":0.795,"vde-5":0.748,"ves-5":0.534,"vde-6":1.007,"ves-6":1,"vde-7":0.892,"ves-7":0.784,"aes-0":1.408,"aes-1":1.413,"aes-2":1.41,"aes-3":1.391,"conj-0":207.339,"conj-1":0.037,"conj-2":1.182,"conj-3":0.042,"conj-4":0.041,"conj-5":149.106,"conj-6":13.453,"conj-7":13.181,"conj-8":0.122,"conj-9":0.036,"conj-10":0.069,"conj-11":161.193,"conj-12":1.288,"conj-13":0.03,"conj-14":178.611,"conj-15":14.654,"teil-0":1.185,"teil-1":1.155,"teil-2":1.123,"teil-3":1.152,"teil-4":1.161,"teil-5":1.149,"adjf-0":1.149,"adjf-1":0.887,"adjf-2":1.171,"adjf-3":0.916,"adjf-4":1.149,"adjf-5":0.901,"adjf-6":1.136,"adjf-7":0.88,"cmp-0":1.203,"cmp-1":0.991,"cmp-2":1.139,"cmp-3":0.893,"cmp-4":0.846,"cmp-5":0.8,"cmp-6":1.031,"cmp-7":0.961,"cmp-8":1.2,"cmp-9":1.114,"cmp-10":1.044,"cmp-11":0.93,"sup-0":0.962,"sup-1":0.994,"sup-2":0.963,"sup-3":1.024,"satz-0":0.51,"satz-1":1.873,"satz-2":1.711,"satz-3":1.022,"satz-4":1.321,"satz-5":0.536,"satz-6":1.013,"satz-7":1.012};
   function setWeights(w) { UW = w || {}; }
   /* orden al azar con pesos (sin reemplazo): clave −ln(u)/peso, de menor a mayor */
   function wshuffle(list, rng) {
