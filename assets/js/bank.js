@@ -1,4 +1,4 @@
-/* In der Stadt 1 – Fahrzeuge — banco de práctica (determinista). v1.0.0
+/* In der Stadt 1 – Fahrzeuge — banco de práctica (determinista). v1.1.0
    Temas: art (der/die/das + plural), wort (palabras ES↔DE), verb (conjugación, verbos separables, ordena),
           adj (groß/klein/langsam/schnell: formas, comparar, am …sten), satz (frases de la hoja).
    Regla de oro: cada pregunta tiene exactamente una opción correcta (las otras son incorrectas en alemán). */
@@ -14,9 +14,11 @@
   function confusable(x, y) { return D.CONFUSE.some(function (gr) { return gr.indexOf(x) >= 0 && gr.indexOf(y) >= 0; }); }
   function art(p) { return p.g + ' ' + p.n; }
 
+  /* v1.1.0: wk = la palabra de la hoja que se practica (n: sustantivo, v: verbo, j: adjetivo). El Desafío sin tiempo no repite
+     la misma palabra en una ronda (ni «der Bus» y «el bus → der Bus», ni «einsteigen = subirse» y «Me subo… ¿ein?»). */
   /* ---- 1. der / die / das ---- */
   D.NOUNS.forEach(function (p, k) {
-    add({ id: 'art-' + k, kind: 'mc', type: 'art', topic: 'art', grp: p.n, fast: true, pic: p.i,
+    add({ id: 'art-' + k, kind: 'mc', type: 'art', topic: 'art', grp: p.n, wk: ['n:' + p.n], fast: true, pic: p.i,
       q: '¿der, die o das?', de: '___ ' + p.n, o: ['der', 'die', 'das'], a: p.g, say: art(p),
       help: p.n + ' = ' + p.es + '. Piensa en la mano de color de tu hoja (azul, rosada o verde).',
       e: '<b>' + art(p) + '</b> — ' + p.es + '. 💡 En la hoja: ' + ({ der: 'mano azul = der', die: 'mano rosada = die', das: 'mano verde = das' })[p.g] + '.' + (p.note ? ' ' + p.note : '') });
@@ -24,7 +26,7 @@
 
   /* ---- 2. Plural ---- (Krankenwagen no entra: la hoja marca la forma regional «Krankenwägen») */
   D.NOUNS.filter(function (p) { return p.plq; }).forEach(function (p, k) {
-    add({ id: 'pl-' + k, kind: 'mc', type: 'plural', topic: 'art', grp: p.n, fast: true, pic: p.i,
+    add({ id: 'pl-' + k, kind: 'mc', type: 'plural', topic: 'art', grp: p.n, wk: ['n:' + p.n], fast: true, pic: p.i,
       q: '¿Cuál es el plural?', de: p.n + ' → die ___', o: [p.pl].concat(p.bad), a: p.pl, say: art(p) + ', die ' + p.pl,
       help: p.n + ' = ' + p.es + '. En la hoja el plural está después de la coma (¨ = la vocal lleva diéresis).',
       e: '<b>' + art(p) + ' → die ' + p.pl + '</b>.' + (p.note ? ' ' + p.note : '') });
@@ -34,25 +36,25 @@
   D.NOUNS.forEach(function (p, k) {
     var others = D.NOUNS.filter(function (x) { return x !== p && !confusable(x.n, p.n); });
     var d = pickN(others, 3);
-    add({ id: 'wde-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: p.n, fast: true, pic: p.i,
+    add({ id: 'wde-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: p.n, wk: ['n:' + p.n], fast: true, pic: p.i,
       q: '¿Cómo se dice «' + p.es + '» en alemán?', o: [art(p)].concat(d.map(art)), a: art(p), say: art(p),
       help: 'Mira el dibujo y piensa en la hoja de vocabulario.', e: '<b>' + art(p) + '</b> = ' + p.es + '.' });
     var d2 = pickN(others, 3);
-    add({ id: 'wes-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: p.n, fast: true, stack: true,
+    add({ id: 'wes-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: p.n, wk: ['n:' + p.n], fast: true, stack: true,
       q: '¿Qué significa «' + art(p) + '»?', o: [p.es].concat(d2.map(function (x) { return x.es; })), a: p.es, say: art(p),
       help: 'Lee la palabra en voz alta. ¿Dónde la viste en la hoja?', e: '<b>' + art(p) + '</b> = ' + p.es + ' ' + p.i });
   });
   D.VERBS.forEach(function (v, k) {
     var others = D.VERBS.filter(function (x) { return x !== v && !confusable(x.inf, v.inf); });
-    add({ id: 'vde-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: v.inf, fast: true, pic: v.i,
+    add({ id: 'vde-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: v.inf, wk: ['v:' + v.inf], fast: true, pic: v.i,
       q: '¿Cómo se dice «' + v.es + '» en alemán?', o: [v.inf].concat(pickN(others, 3).map(function (x) { return x.inf; })), a: v.inf, say: v.inf,
       help: 'Es un verbo de la hoja.', e: '<b>' + v.inf + '</b> (er/sie/es ' + v.er + ') = ' + v.es + '.' });
-    add({ id: 'ves-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: v.inf, fast: true, stack: true,
+    add({ id: 'ves-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: v.inf, wk: ['v:' + v.inf], fast: true, stack: true,
       q: '¿Qué significa «' + v.inf + '»?', o: [v.es].concat(pickN(others, 3).map(function (x) { return x.es; })), a: v.es, say: v.inf,
       help: 'Es un verbo de la hoja.', e: '<b>' + v.inf + '</b> = ' + v.es + '.' });
   });
   D.ADJ.forEach(function (j, k) {
-    add({ id: 'aes-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: j.p, fast: true,
+    add({ id: 'aes-' + k, kind: 'mc', type: 'wort', topic: 'wort', grp: j.p, wk: ['js:' + j.p], /* el significado (schnell = rápido) no sale en las preguntas de formas, ni al revés */ fast: true,
       q: '¿Qué significa «' + j.p + '»?', o: D.ADJ.map(function (x) { return x.es; }), a: j.es, say: j.p,
       help: 'Es un adjetivo de la hoja.', e: '<b>' + j.p + '</b> = ' + j.es + ' ' + j.i });
   });
@@ -78,7 +80,7 @@
   ];
   CONJ.forEach(function (r, k) {
     var v = D.verb(r[1]);
-    add({ id: 'conj-' + k, kind: 'mc', type: 'verb', topic: 'verb', grp: 'conj-' + k, fast: true,
+    add({ id: 'conj-' + k, kind: 'mc', type: 'verb', topic: 'verb', grp: 'conj-' + k, wk: ['v:' + r[1]], fast: true,
       q: 'Elige la forma correcta del verbo:', de: r[0], o: [r[2]].concat(r[3]), a: r[2], say: fill(r[0], r[2]),
       help: 'El verbo significa «' + v.es + '». Mira quién hace la acción: ich, du, er/sie/es (una persona o cosa) o wir.',
       e: '<b>' + fill(r[0], r[2]) + '</b> (' + r[1] + ')' + (r[1] === 'fahren' || r[1] === 'abfahren' ? ' 💡 er/sie/es <b>fährt</b>, du <b>fährst</b> (con ä); ich <b>fahre</b>, wir <b>fahren</b> (sin ä).' : '') + (v.sep ? ' ✂️ «' + v.sep + '» va al final.' : '') });
@@ -90,9 +92,11 @@
     ['Papá se baja del carro.', 'Papa steigt vor der Schule ___.', 'aus'], ['El avión llega a Berlín a las 12.', 'Das Flugzeug kommt um 12 Uhr in Berlin ___.', 'an']
   ];
   TEIL.forEach(function (r, k) {
-    add({ id: 'teil-' + k, kind: 'mc', type: 'teil', topic: 'verb', grp: 'teil-' + k, fast: true,
+    add({ id: 'teil-' + k, kind: 'mc', type: 'teil', topic: 'verb', grp: 'teil-' + k, wk: ['v:' + ({ ein: 'einsteigen', aus: 'aussteigen', an: 'ankommen' })[r[2]]], fast: true,
       q: '«' + r[0] + '» ¿Qué va al final?', de: r[1], o: ['ein', 'aus', 'an', 'ab'], a: r[2], say: r[1].replace('___', r[2]),
-      help: 'einsteigen = subirse · aussteigen = bajarse · ankommen = llegar · abfahren = salir.',
+      /* v1.1.0: antes la Ayuda era «einsteigen = subirse · aussteigen = bajarse · ankommen = llegar · abfahren = salir.»: con la consigna en español
+         («Me subo…») daba la partícula. Ahora explica cómo funciona sin nombrar ningún verbo completo. */
+      help: 'Es un verbo de dos partes: la segunda parte va al final de la frase. Lee otra vez la frase en español y piensa en el verbo completo.',
       e: '<b>' + r[1].replace('___', r[2]) + '</b> ✂️ (' + ({ ein: 'einsteigen', aus: 'aussteigen', an: 'ankommen' })[r[2]] + ')' });
   });
 
@@ -108,12 +112,13 @@
     ['schnell – schneller – ___', 'am schnellsten', ['am schnellesten', 'am schnelsten', 'am schnellersten']]
   ];
   FORMS.forEach(function (r, k) {
-    add({ id: 'adjf-' + k, kind: 'mc', type: 'adjf', topic: 'adj', grp: 'adjf-' + r[0].split(' ')[0], fast: true,
+    add({ id: 'adjf-' + k, kind: 'mc', type: 'adjf', topic: 'adj', grp: 'adjf-' + r[0].split(' ')[0], wk: ['j:' + r[0].split(' ')[0]], fast: true,
       q: 'Completa la fila:', de: r[0], o: [r[1]].concat(r[2]), a: r[1], say: fill(r[0], r[1]).replace(/ – /g, ', '),
       help: 'Más … = …er. El más … de todos = am …sten. ¡Ojo con groß!',
       e: '<b>' + fill(r[0], r[1]) + '</b>' + (r[0].indexOf('groß') === 0 ? ' 💡 groß lleva <b>ö</b> en größer y am größten.' : '') });
   });
   var SPEED = ['schneller', 'langsamer', 'schnell', 'langsam'], SIZE = ['größer', 'kleiner', 'groß', 'klein'];
+  var ADJBASE = { schneller: 'schnell', langsamer: 'langsam', größer: 'groß', kleiner: 'klein' };
   var CMP = [
     ['Das Flugzeug ist ___ als das Fahrrad.', '✈️ 🚲', 'schneller', SPEED],
     ['Das Fahrrad ist ___ als das Auto.', '🚲 🚗', 'langsamer', SPEED],
@@ -129,7 +134,7 @@
     ['Das Auto ist ___ als das Flugzeug.', '🚗 ✈️', 'kleiner', SIZE]
   ];
   CMP.forEach(function (r, k) {
-    add({ id: 'cmp-' + k, kind: 'mc', type: 'adjv', topic: 'adj', grp: 'cmp-' + k, fast: true, pic: r[1],
+    add({ id: 'cmp-' + k, kind: 'mc', type: 'adjv', topic: 'adj', grp: 'cmp-' + k, wk: ['j:' + ADJBASE[r[2]]], fast: true, pic: r[1],
       q: 'Compara: ¿qué palabra va?', de: r[0], o: r[3], a: r[2], say: fill(r[0], r[2]),
       help: 'Mira los dibujos: ¿cuál es más rápido, más lento, más grande o más pequeño? Después de la palabra viene «als».',
       e: '<b>' + fill(r[0], r[2]) + '</b> 💡 Con <b>als</b> va la forma con <b>-er</b>.' });
@@ -141,7 +146,7 @@
     ['Was ist am kleinsten?', '¿Qué es lo más pequeño?', 'das Skateboard', ['der Bus', 'der LKW']]
   ];
   SUP.forEach(function (r, k) {
-    add({ id: 'sup-' + k, kind: 'mc', type: 'sup', topic: 'adj', grp: 'sup-' + k, fast: true,
+    add({ id: 'sup-' + k, kind: 'mc', type: 'sup', topic: 'adj', grp: 'sup-' + k, wk: ['j:' + ['schnell', 'langsam', 'groß', 'klein'][k]], fast: true,
       q: r[0], o: [r[2]].concat(r[3]), a: r[2], say: r[0] + ' ' + r[2].charAt(0).toUpperCase() + r[2].slice(1) + ' ist ' + r[0].replace('Was ist ', '').replace('?', '') + '.',
       help: r[1], e: '<b>' + r[2].charAt(0).toUpperCase() + r[2].slice(1) + ' ist ' + r[0].replace('Was ist ', '').replace('?', '') + '.</b>' });
   });
@@ -173,7 +178,7 @@
       q: '«' + r[0] + '» — ¿Qué respuesta va?', o: [r[1]].concat(r[2]), a: r[1], say: r[0] + ' ' + r[1],
       help: 'La pregunta en español: ' + r[3], e: '<b>' + r[0] + '</b> → <b>' + r[1] + '</b>' });
   });
-  /* Escucha y elige: las tres frases son correctas; la Ayuda muestra la frase (por si no hay voz alemana) */
+  /* Escucha y elige: las tres frases son correctas. v1.1.0: la Ayuda ya NO muestra la frase (era la respuesta): la vuelve a decir más despacio. */
   var HOR = [
     ['Ich gehe zu Fuß.', ['Wann fährt der nächste Bus?', 'Der Bus kommt um 8 Uhr.']],
     ['Wann fährt der nächste Bus?', ['Ich gehe zu Fuß.', 'Wo fährt der Bus 12 ab?']],
@@ -185,7 +190,7 @@
   HOR.forEach(function (r, k) {
     add({ id: 'hor-' + k, kind: 'mc', type: 'hor', topic: 'satz', grp: 'hor-' + k, fast: false, listen: true, stack: true,
       q: 'Escucha 🔊 y elige la frase que oíste:', o: [r[0]].concat(r[1]), a: r[0], say: r[0],
-      help: 'La frase es: ' + r[0], e: '<b>' + r[0] + '</b>' });
+      help: 'Escúchala otra vez, más despacio. Fíjate en la primera palabra y en el verbo.', e: '<b>' + r[0] + '</b>' });
   });
   /* Ordena la frase: la mayúscula marca el inicio y el signo final el final; acc = órdenes aceptados */
   var ORD = [
